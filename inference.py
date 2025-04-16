@@ -10,7 +10,7 @@ from accelerate.utils import set_seed
 import os
 
 MODEL_PREFIX = "HiDream-ai"
-# LLAMA_MODEL_NAME = "/root/.cache/modelscope/hub/models/Qwen/Qwen2.5-7B-Instruct" # "meta-llama/Meta-Llama-3.1-8B-Instruct"
+# LLAMA_MODEL_NAME = "meta-llama/Meta-Llama-3.1-8B-Instruct"
 LLAMA_MODEL_NAME = "mlabonne/Meta-Llama-3.1-8B-Instruct-abliterated"
 # Model configurations
 MODEL_CONFIGS = {
@@ -142,10 +142,10 @@ def generate_image(pipe, model_type, prompt, resolution, seed):
     return images[0], seed
 
 if __name__ == "__main__":
-    os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
+    # os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
     os.environ['NCCL_P2P_DISABLE'] = '1' # for old NVIDIA driver
     os.environ['NCCL_IB_DISABLE'] = '1'
-    
+
     import monkey_patch_cat
     monkey_patch_cat.apply_patch()
 

@@ -9,7 +9,8 @@ from accelerate import Accelerator
 from accelerate.utils import set_seed
 import argparse
 import os
-os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
+
+# os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
 os.environ['NCCL_P2P_DISABLE'] = '1' # for old NVIDIA driver
 os.environ['NCCL_IB_DISABLE'] = '1'
 
@@ -26,6 +27,7 @@ device_map = args.device_map
 accelerator = Accelerator()
 
 MODEL_PREFIX = "HiDream-ai"
+# LLAMA_MODEL_NAME = "meta-llama/Meta-Llama-3.1-8B-Instruct"
 LLAMA_MODEL_NAME = "mlabonne/Meta-Llama-3.1-8B-Instruct-abliterated"
 
 # Model configurations
