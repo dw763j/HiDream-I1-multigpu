@@ -5,9 +5,28 @@ from hi_diffusers import HiDreamImageTransformer2DModel
 from hi_diffusers.schedulers.fm_solvers_unipc import FlowUniPCMultistepScheduler
 from hi_diffusers.schedulers.flash_flow_match import FlashFlowMatchEulerDiscreteScheduler
 from transformers import LlamaForCausalLM, PreTrainedTokenizerFast
+from accelerate import Accelerator
+from accelerate.utils import set_seed
+import argparse
+import os
+os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
+os.environ['NCCL_P2P_DISABLE'] = '1' # for old NVIDIA driver
+os.environ['NCCL_IB_DISABLE'] = '1'
+
+import monkey_patch_cat
+monkey_patch_cat.apply_patch()
+
+# Add command line arguments
+parser = argparse.ArgumentParser()
+parser.add_argument("--device_map", type=str, default="balanced", help="Device map strategy: 'auto', 'balanced', 'balanced_low_0', etc.")
+args = parser.parse_args()
+device_map = args.device_map
+
+# Initialize Accelerator
+accelerator = Accelerator()
 
 MODEL_PREFIX = "HiDream-ai"
-LLAMA_MODEL_NAME = "meta-llama/Meta-Llama-3.1-8B-Instruct"
+LLAMA_MODEL_NAME = "mlabonne/Meta-Llama-3.1-8B-Instruct-abliterated"
 
 # Model configurations
 MODEL_CONFIGS = {
@@ -51,28 +70,38 @@ def load_models(model_type):
     pretrained_model_name_or_path = config["path"]
     scheduler = MODEL_CONFIGS[model_type]["scheduler"](num_train_timesteps=1000, shift=config["shift"], use_dynamic_shifting=False)
     
+    print(f"Using device mapping strategy: {device_map}")
+    print(f"Available GPU count: {torch.cuda.device_count()}")
+    
+    # Load tokenizer (doesn't need to be on GPU)
     tokenizer_4 = PreTrainedTokenizerFast.from_pretrained(
         LLAMA_MODEL_NAME,
         use_fast=False)
     
+    # Use device_map to distribute text encoder across multiple GPUs
     text_encoder_4 = LlamaForCausalLM.from_pretrained(
         LLAMA_MODEL_NAME,
         output_hidden_states=True,
         output_attentions=True,
-        torch_dtype=torch.bfloat16).to("cuda")
+        device_map=device_map,
+        torch_dtype=torch.bfloat16)
 
+    # Use device_map to distribute transformer model across multiple GPUs
     transformer = HiDreamImageTransformer2DModel.from_pretrained(
         pretrained_model_name_or_path, 
-        subfolder="transformer", 
-        torch_dtype=torch.bfloat16).to("cuda")
+        subfolder="transformer",
+        device_map=device_map,
+        torch_dtype=torch.bfloat16)
 
+    # Load pipeline and configure device_map
     pipe = HiDreamImagePipeline.from_pretrained(
         pretrained_model_name_or_path, 
         scheduler=scheduler,
         tokenizer_4=tokenizer_4,
         text_encoder_4=text_encoder_4,
+        device_map=device_map,
         torch_dtype=torch.bfloat16
-    ).to("cuda", torch.bfloat16)
+    )
     pipe.transformer = transformer
     
     return pipe, config
@@ -121,25 +150,36 @@ def generate_image(model_type, prompt, resolution, seed):
     if seed == -1:
         seed = torch.randint(0, 1000000, (1,)).item()
     
-    generator = torch.Generator("cuda").manual_seed(seed)
+    # All available GPUs should already be used by the model, no need to manually specify generator's device
+    generator = torch.Generator().manual_seed(seed)
+    set_seed(seed)  # Set global seed to ensure consistency of results
     
-    images = pipe(
-        prompt,
-        height=height,
-        width=width,
-        guidance_scale=guidance_scale,
-        num_inference_steps=num_inference_steps,
-        num_images_per_prompt=1,
-        generator=generator
-    ).images
+    # Execute inference
+    with torch.inference_mode():
+        images = pipe(
+            prompt,
+            height=height,
+            width=width,
+            guidance_scale=guidance_scale,
+            num_inference_steps=num_inference_steps,
+            num_images_per_prompt=1,
+            generator=generator
+        ).images
     
     return images[0], seed
 
 # Initialize with default model
-print("Loading default model (full)...")
+
 current_model = "full"
+print(f"Loading {current_model} model...")
 pipe, _ = load_models(current_model)
 print("Model loaded successfully!")
+
+# Print current model module device mapping
+if hasattr(pipe, "device_map") and pipe.device_map:
+    print("\nModel deployment device mapping:")
+    for name, device in pipe.device_map.items():
+        print(f"- {name}: {device}")
 
 # Create Gradio interface
 with gr.Blocks(title="HiDream Image Generator") as demo:
