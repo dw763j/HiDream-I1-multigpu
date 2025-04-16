@@ -11,8 +11,8 @@ import argparse
 import os
 
 # os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
-os.environ['NCCL_P2P_DISABLE'] = '1' # for old NVIDIA driver
-os.environ['NCCL_IB_DISABLE'] = '1'
+# os.environ['NCCL_P2P_DISABLE'] = '1' # for old NVIDIA driver
+# os.environ['NCCL_IB_DISABLE'] = '1' # for old NVIDIA driver
 
 import monkey_patch_cat
 monkey_patch_cat.apply_patch()

@@ -143,8 +143,8 @@ def generate_image(pipe, model_type, prompt, resolution, seed):
 
 if __name__ == "__main__":
     # os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
-    os.environ['NCCL_P2P_DISABLE'] = '1' # for old NVIDIA driver
-    os.environ['NCCL_IB_DISABLE'] = '1'
+    # os.environ['NCCL_P2P_DISABLE'] = '1' # for old NVIDIA driver
+    # os.environ['NCCL_IB_DISABLE'] = '1' # for old NVIDIA driver
 
     import monkey_patch_cat
     monkey_patch_cat.apply_patch()
@@ -171,7 +171,6 @@ if __name__ == "__main__":
             print(f"- {name}: {device}")
 
     prompt = "A cat holding a sign that says \"Hi-Dreams.ai\"."
-    prompt = "A detailed and futuristic illustration of a computer processor hardware design process. Show a close-up of a high-tech semiconductor chip with intricate circuitry on a blue background. Highlight a vulnerability in the design, such as a glowing red area or a crack in the circuitry. Next to the chip, depict engineers or AI systems analyzing the design on holographic screens, identifying and fixing the issue. Include symbols of security, such as a shield icon or a lock, to represent the threat mitigation. Emphasize a before-and-after effect, with the flawed design on one side and the repaired, secure design on the other. Use a modern, tech-inspired color palette with blues, silvers, and reds to convey innovation and urgency."
     resolution = "1024 × 1024 (Square)"
     seed = -1
     print(f"Generating image, prompt: '{prompt}'")
